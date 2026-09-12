@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [internal]
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks: [internal]
+
+  erp-api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: ./deploy/erp-api.env
+    depends_on: [postgres, redis, licensing-issuer]
+    volumes:
+      - ./local-secrets/licensing/public.pem:/run/secrets/medorax-license/public.pem:ro
+    networks: [internal]
+
+  erp-web:
+    build: ./frontend
+    restart: unless-stopped
+    networks: [internal]
+
+  licensing-issuer:
+    build: ./licensing-issuer
+    restart: unless-stopped
+    env_file: ./deploy/licensing-issuer.env
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      - ./local-secrets/licensing:/run/secrets/medorax-license:ro
+      - licensing_data:/data
+    networks: [internal]
+
+  nginx:
+    image: nginx:1.29-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./ops/nginx:/etc/nginx/conf.d:ro
+      - ./ops/tls:/etc/nginx/tls:ro
+    depends_on: [erp-web, erp-api, licensing-issuer]
+    networks: [internal]
+
+volumes:
+  postgres_data:
+  redis_data:
+  licensing_data:
+networks:
+  internal:
