@@ -79,7 +79,9 @@ class Settings(BaseSettings):
     internal_api_key: str = ""
 
     # ── Commercial MEDORAX ERP licensing ─────────────────────────────────────
-    license_issuer_url: str = ""
+    license_issuer_url: str = "https://api.medorax.in/licensing"
+    # ERP runtime clients do not receive the issuer administration token.
+    # License issuance/revocation remains restricted to the onboarding control plane.
     license_issuer_token: str = ""
     license_public_key_file: str = "/run/secrets/medorax-license/public.pem"
     license_offline_grace_hours: int = 24
@@ -127,8 +129,6 @@ class Settings(BaseSettings):
         if self.app_env == "production":
             if not self.license_issuer_url:
                 raise ValueError("LICENSE_ISSUER_URL is required in production")
-            if not self.license_issuer_token:
-                raise ValueError("LICENSE_ISSUER_TOKEN is required in production")
             if not self.erp_provision_token:
                 raise ValueError("ERP_PROVISION_TOKEN is required in production")
             if self.email_provider == "console":

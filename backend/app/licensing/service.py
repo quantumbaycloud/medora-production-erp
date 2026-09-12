@@ -76,8 +76,15 @@ def _issuer_url() -> str | None:
     return os.getenv("LICENSE_ISSUER_URL", "").rstrip("/") or None
 
 def _issuer_headers() -> dict[str, str]:
-    token = os.getenv("LICENSE_ISSUER_TOKEN", "").strip()
-    return {"X-Issuer-Token": token} if token else {}
+    """
+    ERP runtime calls use the public licensing protocol.
+
+    The issuer administration token must never be distributed to an ERP
+    installation. Issuance/revocation/renewal are control-plane operations
+    performed by onboarding/admin. ERP proves possession of a valid signed
+    license envelope when activating a device.
+    """
+    return {}
 
 
 def issuer_activate(payload: dict[str, Any], signature: str, device_id: str, device_name: str | None) -> dict[str, Any]:

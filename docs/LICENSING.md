@@ -4,7 +4,7 @@ This repository contains the working licensing control plane and ERP-side enforc
 
 ## Components
 
-- `licensing-issuer/`: internal license authority. Issues, renews, revokes and validates signed licenses.
+- `licensing-issuer/`: development/reference issuer implementation. Production ERP installations use the MEDORAX central licensing authority exposed at `https://api.medorax.in/licensing`.
 - `backend/app/licensing/`: tenant-scoped ERP API for activation, deactivation, status and module entitlements.
 - `frontend/src/services/licensing/`: authenticated client for the ERP licensing API.
 - `frontend/src/pages/Licensing/LicenseManagement.jsx`: operational license management screen.
@@ -14,7 +14,9 @@ This repository contains the working licensing control plane and ERP-side enforc
 
 `ISSUED -> ACTIVATED -> ACTIVE -> EXPIRED/REVOKED/DEACTIVATED`
 
-The issuer signs canonical JSON with Ed25519. The ERP backend contains only the public verification key. A license is bound to a tenant and a device. The backend stores activation state and periodically asks the issuer for current status.
+The onboarding control plane is the license authority: it requests a license from the central issuer, receives an Ed25519-signed canonical license envelope, stores the signed envelope with the approved application, and provisions that exact envelope to ERP. The ERP backend contains only the public verification key, verifies the signature locally, binds the license to a tenant and device, and periodically asks the central issuer for current status.
+
+ERP installations must never contain the issuer private key or issuer administration token. The issuer administration token is used only by the onboarding/admin control plane for issuance, renewal and revocation.
 
 ## API
 
@@ -29,7 +31,7 @@ ERP API:
 
 Issuer API (internal/admin):
 
-- `POST /v1/licenses`
+- `POST /v1/licenses` (control plane only)
 - `GET /v1/licenses/{license_id}`
 - `POST /v1/licenses/{license_id}/revoke`
 - `POST /v1/licenses/{license_id}/renew`
