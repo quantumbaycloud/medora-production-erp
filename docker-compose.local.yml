@@ -1,0 +1,82 @@
+services:
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - medorax_local_postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - medorax_local_redis_data:/data
+    networks:
+      - internal
+
+  licensing-issuer:
+    build:
+      context: ./licensing-issuer
+    restart: unless-stopped
+    env_file:
+      - ./deploy/licensing-issuer.local.env
+    ports:
+      - "127.0.0.1:8100:8100"
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./local-secrets/licensing:/run/secrets/medorax-license:ro
+      - medorax_local_licensing_data:/data
+    depends_on:
+      - postgres
+    networks:
+      - internal
+
+  erp-api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./deploy/erp-api.local.env
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./local-secrets/licensing/public.pem:/run/secrets/medorax-license/public.pem:ro
+    depends_on:
+      - postgres
+      - redis
+      - licensing-issuer
+    networks:
+      - internal
+
+  erp-web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      - erp-api
+    networks:
+      - internal
+
+volumes:
+  medorax_local_postgres_data:
+  medorax_local_redis_data:
+  medorax_local_licensing_data:
+
+networks:
+  internal:
