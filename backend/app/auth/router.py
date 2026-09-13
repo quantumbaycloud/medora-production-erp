@@ -5,7 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, 
 from sqlalchemy.orm import Session as DbSession
 
 from app.auth import service
-from app.auth.models import Session as AuthSession
+from app.auth.models import LoginHistory, Session as AuthSession
 from app.auth.schemas import DeviceRead, DeviceUpdate, ForgotPasswordRequest, LoginRequest, RefreshRequest, RegisterRequest, ResendVerificationRequest, ResetPasswordRequest, SessionRead, TokenResponse, VerifyEmailRequest
 from app.core.config import settings
 from app.db.base import get_db
@@ -18,10 +18,19 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 
 def _ip(request: Request): return request.client.host if request.client else None
 
-def _user(user: User):
+def _user(user: User, db: DbSession | None = None):
     pharmacies = getattr(user, "pharmacies", None) or []
     pharmacy_id = str(pharmacies[0].id) if pharmacies else None
-    return {"id": str(user.id), "username": user.username, "name": user.name, "email": user.email, "phone": user.phone, "pharmacy_id": pharmacy_id, "email_verified": bool(user.email_verified), "phone_verified": bool(user.phone_verified), "is_active": bool(user.is_active)}
+    role = None
+    role_id = None
+    if db is not None:
+        from app.staff.models import StaffMember
+        staff = db.query(StaffMember).filter(StaffMember.user_id == user.id).order_by(StaffMember.created_at.asc()).first()
+        if staff and staff.role:
+            role = staff.role.name
+            role_id = staff.role.id
+            pharmacy_id = staff.pharmacy_id
+    return {"id": str(user.id), "username": user.username, "name": user.name, "email": user.email, "phone": user.phone, "pharmacy_id": pharmacy_id, "role": role, "role_id": role_id, "email_verified": bool(user.email_verified), "phone_verified": bool(user.phone_verified), "is_active": bool(user.is_active)}
 
 def _email_task(to: str, token: str, kind: str):
     try:
@@ -34,7 +43,7 @@ def _email_task(to: str, token: str, kind: str):
 def register(request: Request, payload: RegisterRequest, background_tasks: BackgroundTasks, db: DbSession = Depends(get_db)):
     user, token = service.register_user(db, payload.name, str(payload.email) if payload.email else None, payload.phone, payload.password)
     if token and user.email: background_tasks.add_task(_email_task, user.email, token, "verification")
-    return {"user": _user(user), "message": "Registration successful"}
+    return {"user": _user(user, db), "message": "Registration successful"}
 
 @router.post("/verify-email")
 def verify_email(payload: VerifyEmailRequest, db: DbSession = Depends(get_db)):
@@ -65,7 +74,7 @@ def reset_password(payload: ResetPasswordRequest, db: DbSession = Depends(get_db
 def login(request: Request, payload: LoginRequest, db: DbSession = Depends(get_db)):
     access, refresh, device = service.authenticate(db, payload.identifier, payload.password, str(payload.device_identifier) if payload.device_identifier else None, payload.device_name, payload.platform, payload.app_version, payload.push_token, _ip(request), request.headers.get("user-agent"))
     user = service._get_user_by_identifier(db, payload.identifier)
-    return TokenResponse(access_token=access, refresh_token=refresh, device_identifier=device, user=_user(user) if user else None)
+    return TokenResponse(access_token=access, refresh_token=refresh, device_identifier=device, user=_user(user, db) if user else None)
 
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit(settings.rate_limit_refresh)
@@ -75,7 +84,7 @@ def refresh(request: Request, payload: RefreshRequest, db: DbSession = Depends(g
     except jwt.PyJWTError: decoded = {}
     row = db.query(AuthSession).filter(AuthSession.id == decoded.get("sid")).first() if decoded.get("sid") else None
     user = db.query(User).filter(User.id == decoded.get("sub")).first() if decoded.get("sub") else None
-    return TokenResponse(access_token=access, refresh_token=refresh_token, device_identifier=row.device.device_identifier if row and row.device else None, user=_user(user) if user else None)
+    return TokenResponse(access_token=access, refresh_token=refresh_token, device_identifier=row.device.device_identifier if row and row.device else None, user=_user(user, db) if user else None)
 
 @router.post("/logout")
 def logout(current_user: User = Depends(get_current_user), db: DbSession = Depends(get_db)):
@@ -88,7 +97,13 @@ def logout_all(current_user: User = Depends(get_current_user), db: DbSession = D
     service.logout_all(db, str(current_user.id), getattr(current_user, "_current_session_id", None)); return {"message":"All other sessions revoked"}
 
 @router.get("/me")
-def me(current_user: User = Depends(get_current_user)): return {"user": _user(current_user)}
+def me(current_user: User = Depends(get_current_user), db: DbSession = Depends(get_db)): return {"user": _user(current_user, db)}
+
+
+@router.get("/login-history")
+def login_history(current_user: User = Depends(get_current_user), db: DbSession = Depends(get_db)):
+    rows = (db.query(LoginHistory).filter(LoginHistory.user_id == current_user.id).order_by(LoginHistory.created_at.desc()).limit(200).all())
+    return [{"id": row.id, "success": bool(row.success), "ip_address": row.ip_address, "user_agent": row.user_agent, "created_at": row.created_at, "device_id": row.device_id} for row in rows]
 
 @router.get("/sessions", response_model=list[SessionRead])
 def sessions(current_user: User = Depends(get_current_user), db: DbSession = Depends(get_db)):

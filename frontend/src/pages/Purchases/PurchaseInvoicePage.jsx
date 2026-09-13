@@ -36,10 +36,10 @@ const createInitialBatches = () =>
 
 const PurchasePageInvoice = () => {
   const [activeTab, setActiveTab] = useState("receive-goods");
-  const [selectedPO, setSelectedPO] = useState("PO-2026-0141 (MedLife Solutions)");
-  const [invoiceNo, setInvoiceNo] = useState("INV-9921-X");
-  const [invoiceDate, setInvoiceDate] = useState("2024-10-25");
-  const [receivedDate, setReceivedDate] = useState("2024-10-26");
+  const [selectedPO, setSelectedPO] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0,10));
+  const [receivedDate, setReceivedDate] = useState(() => new Date().toISOString().slice(0,10));
   const [receivedItems, setReceivedItems] = useState(initialReceivedItems);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,7 +49,7 @@ const PurchasePageInvoice = () => {
   const [creditNoteNumber, setCreditNoteNumber] = useState("");
   const [creditNoteAmount, setCreditNoteAmount] = useState("");
   const [returnReason, setReturnReason] = useState("Damaged Goods");
-  const [returnDate, setReturnDate] = useState("2024-10-27");
+  const [returnDate, setReturnDate] = useState(() => new Date().toISOString().slice(0,10));
   const [returnQuantities, setReturnQuantities] = useState({});
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -149,7 +149,7 @@ const PurchasePageInvoice = () => {
     [returnQuantities]
   );
 
-  const estimatedCredit = useMemo(() => getReturnTotal() * 5.25, [getReturnTotal]);
+  const estimatedCredit = useMemo(() => 0, []);
 
   const switchTab = useCallback((tab) => {
     setActiveTab(tab);
@@ -163,24 +163,12 @@ const PurchasePageInvoice = () => {
 
   const handleConfirm = useCallback(() => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      const message =
-        activeTab === "receive-goods"
-          ? "Receipt confirmed successfully!"
-          : activeTab === "batch-entry"
-          ? "Batches confirmed successfully!"
-          : activeTab === "expiry-entry"
-          ? "Invoice finalized successfully!"
-          : activeTab === "purchase-return"
-          ? "Return request submitted!"
-          : "Credit note saved successfully!";
-      showToast("success", message);
-    }, 1500);
+    showToast("info", "Purchase workflow validation is complete. Use the backend purchase endpoints for persisted invoice changes.");
+    setIsSubmitting(false);
   }, [activeTab]);
 
   const handleSaveDraft = useCallback(() => {
-    showToast("info", "Draft saved successfully!");
+    showToast("info", "Draft is kept in the current form until a persisted purchase-order endpoint is available.");
   }, []);
 
   const getTabConfig = () => {

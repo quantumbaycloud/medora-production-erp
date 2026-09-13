@@ -9,6 +9,7 @@ import { GSTStats, GSTTable } from "../../components/reports/GSTTab";
 import { ProfitStats, ProfitTable } from "../../components/reports/ProfitTab";
 import { CustomerStats, CustomerTable } from "../../components/reports/CustomerTab";
 import { SupplierStats, SupplierTable } from "../../components/reports/SupplierTab";
+import { supplierData } from "../../data/reports/mockData";
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState("sales");
@@ -98,11 +99,9 @@ export default function ReportsPage() {
               className={`${commonFilterClass} w-full md:w-40`}
             >
               <option value="All Suppliers">All Suppliers</option>
-              <option value="Global Pharma">Global Pharma</option>
-              <option value="MedLife Solutions">MedLife Solutions</option>
-              <option value="BioCare Dist.">BioCare Dist.</option>
-              <option value="HealthLink">HealthLink</option>
-              <option value="Reliant Pharma">Reliant Pharma</option>
+              {supplierData.map((item) => (
+                <option key={item.id} value={item.name}>{item.name}</option>
+              ))}
             </select>
           </>
         );

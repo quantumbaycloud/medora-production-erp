@@ -4,13 +4,13 @@ import { Toast } from "../../components/purchases/Shared";
 import OrderDetailsSection from "../../components/purchases/OrderDetailsSection";
 import LineItemsTable from "../../components/purchases/LineItemsTable";
 import NotesAndSummary from "../../components/purchases/NotesAndSummary";
-import { initialOrderItems, productOptions } from "../../data/purchases/data";
+import { initialOrderItems, productOptions, supplierOptions, locationOptions } from "../../data/purchases/data";
 
 export default function PurchaseOrderPage() {
-  const [poNumber] = useState("PO-2026-0142");
+  const [poNumber] = useState(() => `PO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`);
   const [supplier, setSupplier] = useState("");
-  const [location, setLocation] = useState("Main Warehouse - North Wing");
-  const [poDate, setPoDate] = useState("2024-10-25");
+  const [location, setLocation] = useState("");
+  const [poDate, setPoDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [deliveryDate, setDeliveryDate] = useState("");
   const [refNumber, setRefNumber] = useState("");
   const [items, setItems] = useState(initialOrderItems);
@@ -107,6 +107,7 @@ export default function PurchaseOrderPage() {
             setDeliveryDate={setDeliveryDate}
             refNumber={refNumber}
             setRefNumber={setRefNumber}
+            supplierOptions={supplierOptions}
           />
 
           <LineItemsTable

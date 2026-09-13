@@ -1,6 +1,7 @@
 import { ChevronDown, Plus, Package, FileText } from "lucide-react";
 import { Th, Td, Pagination } from "./Shared";
-import { poOptions } from "../../data/purchases/data";
+import { poOptions, purchaseData } from "../../data/purchases/data";
+import { supplierData } from "../../data/reports/mockData";
 
 export default function ReceiveGoodsTab({
   selectedPO,
@@ -19,6 +20,8 @@ export default function ReceiveGoodsTab({
   page,
   setPage,
 }) {
+  const selectedPurchase = purchaseData.find((p) => p.id === selectedPO || p.invoice_number === selectedPO);
+  const selectedSupplier = supplierData.find((s) => s.id === selectedPurchase?.supplier_id);
   const totalRows = receivedItems.length;
   const totalPages = Math.max(Math.ceil(totalRows / 5), 1);
   const safePage = Math.min(Math.max(page, 1), totalPages);
@@ -29,7 +32,7 @@ export default function ReceiveGoodsTab({
       <div className="bg-white rounded border border-[#c2c6d3] p-6">
         <div className="flex justify-between items-center mb-4 pb-3 border-b border-[#c2c6d3]">
           <h3 className="font-title-lg text-[#121c2a]">Receipt Details</h3>
-          <span className="font-label-md text-[#004287] bg-[#d6e3ff] px-3 py-1 rounded font-bold">GRN-2026-0089</span>
+          <span className="font-label-md text-[#004287] bg-[#d6e3ff] px-3 py-1 rounded font-bold">Receipt</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="flex flex-col gap-1.5">
@@ -54,7 +57,7 @@ export default function ReceiveGoodsTab({
             <label className="font-label-md text-[#121c2a]">Supplier</label>
             <input
               type="text"
-              value="MedLife Solutions"
+              value={selectedSupplier?.name || ""}
               readOnly
               className="w-full bg-[#f8f9ff] border border-[#c2c6d3] rounded px-3 py-2 text-[#424751] cursor-not-allowed font-body-md outline-none"
             />
@@ -63,7 +66,7 @@ export default function ReceiveGoodsTab({
             <label className="font-label-md text-[#121c2a]">PO Date</label>
             <input
               type="text"
-              value="2024-10-22"
+              value={selectedPurchase?.invoice_date ? new Date(selectedPurchase.invoice_date).toLocaleDateString("en-IN") : "—"}
               readOnly
               className="w-full bg-[#f8f9ff] border border-[#c2c6d3] rounded px-3 py-2 text-[#424751] cursor-not-allowed font-body-md outline-none"
             />

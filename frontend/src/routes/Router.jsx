@@ -57,6 +57,7 @@ import PrescriptionBilling from "../pages/Billing/PrescriptionBilling";
 import SessionManagement from "../pages/SessionManagement/SessionManagement";
 import LoginHistory from "../pages/LoginHistory/LoginHistory";
 import LicenseManagement from "../pages/Licensing/LicenseManagement";
+import ProfilePage from "../pages/Authentication/ProfilePage";
 import ProtectedRoute from "./ProtectedRoute";
 
 const router = createBrowserRouter([
@@ -89,27 +90,23 @@ const router = createBrowserRouter([
     element: <LicenseManagement />,
   },
   {
+    path: "/profile",
+    element: <ProfilePage />,
+  },
+  {
     element: <ProtectedRoute />,
     children: [
       {
         path: "/",
         element: <DashboardLayout />,
         children: [
+          { index: true, element: <PharmacyDashboard /> },
           {
+            path: "suppliers",
             element: <SupplierLayout />,
             children: [
-              {
-                index: true,
-                element: <Dashboard />,
-              },
-              {
-                path: "suppliers",
-                element: <Suppliers />,
-              },
-              {
-                path: "suppliers/:supplierId",
-                element: <SupplierInformation />,
-              },
+              { index: true, element: <Suppliers /> },
+              { path: ":supplierId", element: <SupplierInformation /> },
             ],
           },
           {

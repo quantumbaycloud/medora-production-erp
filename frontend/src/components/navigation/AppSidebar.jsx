@@ -1,4 +1,6 @@
 import { LogOut, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import authService from "../../store/authService";
 import { NavLink, useLocation } from "react-router-dom";
 
 import logo from "../../assets/WhatsApp_Image_2026-06-22_at_5.25.21_PM-removebg-preview.png";
@@ -35,6 +37,12 @@ const NavigationLink = ({ item, pathname, onNavigate }) => {
 
 const AppSidebar = ({ isOpen, onClose }) => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const handleLogout = async () => {
+    try { await authService.logout(); } catch {}
+    onClose?.();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <>
@@ -108,14 +116,14 @@ const AppSidebar = ({ isOpen, onClose }) => {
         </nav>
 
         <div className="mt-5 border-t border-outline-variant pt-4">
-          <NavLink
-            to="/login"
-            onClick={onClose}
+          <button
+            type="button"
+            onClick={handleLogout}
             className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-on-surface-variant transition-colors hover:bg-error-container hover:text-error"
           >
             <LogOut size={20} strokeWidth={2.2} />
             <span>Logout</span>
-          </NavLink>
+          </button>
         </div>
       </aside>
     </>

@@ -11,8 +11,8 @@ export default function OrderDetailsSection({
   setDeliveryDate,
   refNumber,
   setRefNumber,
+  supplierOptions = [],
 }) {
-  const supplierOptions = ["Supplier A", "Supplier B", "Supplier C"];
 
   return (
     <div className="bg-white rounded border border-[#c2c6d3] p-6">
@@ -35,7 +35,7 @@ export default function OrderDetailsSection({
           >
             <option value="">Select Supplier</option>
             {supplierOptions.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s.id || s.value || s} value={s.id || s.value || s}>{s.name || s.label || s}</option>
             ))}
           </select>
         </div>
