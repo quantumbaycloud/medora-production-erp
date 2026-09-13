@@ -10,6 +10,7 @@ import {
   stockAdjustmentItems,
   categories,
   warehouses,
+  currentStockItems,
 } from "../../data/inventoryManagement/inventoryData";
 
 const statusVariantMap = {
@@ -155,9 +156,7 @@ const StockAdjustment = () => {
                   Item Name / SKU
                 </label>
                 <select className="h-11 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface-variant outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-fixed">
-                  <option>Amoxicillin 500mg Caps - MED-AMX-050</option>
-                  <option>Ibuprofen 400mg Tabs - MED-IBU-400</option>
-                  <option>Lisinopril 10mg Tabs - MED-LIS-010</option>
+                  {currentStockItems.map((item) => <option key={item.id} value={item.id}>{item.name} - {item.sku}</option>)}
                 </select>
               </div>
 

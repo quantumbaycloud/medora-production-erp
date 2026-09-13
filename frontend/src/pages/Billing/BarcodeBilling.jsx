@@ -13,27 +13,14 @@ import {
   UserRoundSearch,
   Printer,
 } from "lucide-react";
+import { suggestedProducts } from "../../data/billing/billingData";
+import { createInvoice } from "../../services/billingService";
 
 import { useCart } from "../../hooks/useCart";
 
 const TAX_RATE = 0.07;
 
-const initialCartItems = [
-  {
-    id: 1,
-    name: "Amoxicillin 500mg",
-    ndc: "0009-0016-14",
-    price: 14.5,
-    quantity: 2,
-  },
-  {
-    id: 2,
-    name: "Lisinopril 10mg",
-    ndc: "0185-0536-01",
-    price: 8.25,
-    quantity: 1,
-  },
-];
+const initialCartItems = [];
 
 const BarcodeBilling = () => {
   const [scanQuery, setScanQuery] = useState("");
@@ -95,12 +82,8 @@ const BarcodeBilling = () => {
     setShowReceipt(true);
   };
 
-  const handleCompletePayment = () => {
-    alert(
-      `Payment of $${total.toFixed(2)} via ${paymentMethod.toUpperCase()} processed successfully!`
-    );
-    setShowReceipt(false);
-    clearCart();
+  const handleCompletePayment = async () => {
+    try { await createInvoice({ cartItems, paymentMethod: paymentMethod === "card" ? "Card" : "Cash" }); setShowReceipt(false); clearCart(); } catch (error) { alert(error?.response?.data?.detail || error.message || "Unable to create invoice"); }
   };
 
   const handleRefund = () => {

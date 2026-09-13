@@ -51,3 +51,6 @@ python-json-logger
 python-dotenv==1.2.2
 
 gunicorn
+
+# ── Observability ─────────────────────────────────────────────────────────────
+prometheus-fastapi-instrumentator==7.1.0

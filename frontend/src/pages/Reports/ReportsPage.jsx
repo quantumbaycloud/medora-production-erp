@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search, Download, RefreshCw } from "lucide-react";
 import { TABS } from "../../data/reports/data";
+import { currentStockItems } from "../../data/inventoryManagement/inventoryData";
 import { SalesStats, SalesTable } from "../../components/reports/SalesTab";
 import { PurchaseStats, PurchaseTable } from "../../components/reports/PurchaseTab";
 import { InventoryStats, InventoryTable } from "../../components/reports/InventoryTab";
@@ -185,10 +186,9 @@ export default function ReportsPage() {
               className={`${commonFilterClass} w-full md:w-44`}
             >
               <option value="All Products">All Products</option>
-              <option value="Paracetamol">Paracetamol</option>
-              <option value="Amoxicillin">Amoxicillin</option>
-              <option value="Ibuprofen">Ibuprofen</option>
-              <option value="Azithromycin">Azithromycin</option>
+              {[...new Set(currentStockItems.map((item) => item.name).filter(Boolean))].map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
             </select>
           </>
         );

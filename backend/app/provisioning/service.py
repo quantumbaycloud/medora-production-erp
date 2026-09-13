@@ -30,6 +30,10 @@ def provision(db: Session, payload: ProvisionRequest):
     license_payload = dict(payload.license)
     if str(license_payload.get("license_id")) != payload.licenseKey:
         raise HTTPException(400, "licenseKey does not match license payload")
+
+    payload_expires_at = _dt(license_payload.get("expires_at"))
+    if payload_expires_at != expires_at:
+        raise HTTPException(400, "licenseExpiresAt does not match signed license")
     if str(license_payload.get("tenant_id")) != payload.pharmacyId:
         raise HTTPException(400, "License tenant does not match pharmacyId")
     if str(license_payload.get("product", "MEDORAX-ERP")) != "MEDORAX-ERP":
@@ -50,6 +54,8 @@ def provision(db: Session, payload: ProvisionRequest):
 
     if existing_username and (user is None or existing_username.id != user.id):
         raise HTTPException(409, "ERP username is already assigned to another account")
+
+    now = datetime.now(timezone.utc)
 
     if user is None:
         user = User(
@@ -76,8 +82,21 @@ def provision(db: Session, payload: ProvisionRequest):
         db.add(Credential(user_id=user.id, password_hash=password_hash))
     else:
         credential.password_hash = password_hash
-        user.password_updated_at = datetime.now(timezone.utc)
-        db.query(AuthSession).filter(AuthSession.user_id == user.id, AuthSession.revoked.is_(False)).update({"revoked": True, "revoked_at": datetime.now(timezone.utc), "logout_reason": "admin_revoked"}, synchronize_session=False)
+
+    # Provisioning is authoritative for onboarding-created ERP credentials.
+    # Any prior ERP session is invalid after a credential rotation.
+    user.password_updated_at = now
+    db.query(AuthSession).filter(
+        AuthSession.user_id == user.id,
+        AuthSession.revoked.is_(False),
+    ).update(
+        {
+            "revoked": True,
+            "revoked_at": now,
+            "logout_reason": "credential_rotated_by_onboarding",
+        },
+        synchronize_session=False,
+    )
 
     pharmacy = db.query(Pharmacy).filter(Pharmacy.id == payload.pharmacyId).first()
     if pharmacy is None:

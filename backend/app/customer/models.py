@@ -6,12 +6,12 @@ class Customer(Base):
     __tablename__ = "customers"
 
     id = Column(String, primary_key=True, default=new_uuid)
-    pharmacy_id = Column(String(100), nullable=True, default="ph_main")
+    pharmacy_id = Column(String(100), nullable=False, index=True)
     customer_name = Column(String(255), nullable=True)
     name = Column(String(200), index=True, nullable=False)
     type = Column(String(50), index=True, default="Regular")  # Regular, Repeat, One-Time, VIP, New
-    mobile_number = Column(String(50), nullable=True, default="N/A")
-    phone = Column(String(50), nullable=True, default="N/A")
+    mobile_number = Column(String(50), nullable=True)
+    phone = Column(String(50), nullable=True)
     email = Column(String(100), nullable=True)
     address = Column(String(500), nullable=True)
     gst_number = Column(String(50), nullable=True)

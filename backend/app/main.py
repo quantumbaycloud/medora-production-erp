@@ -41,7 +41,6 @@ from app.user.router import router as user_router
 from app.staff.router import router as staff_router
 from app.medicine.router import router as medicine_router
 from app.supplier.router import router as supplier_router
-from app.routers.suppliers import router as suppliers_router
 from app.purchase.router import router as purchase_router
 from app.inventory.router import router as inventory_router
 from app.customer.router import router as customer_router
@@ -76,19 +75,19 @@ async def lifespan(app: FastAPI):
     import app.licensing.models  # noqa: F401
     import app.provisioning.models  # noqa: F401
 
-    # create_all is retained for the local bootstrap path. PostgreSQL advisory
-    # locking prevents Gunicorn workers from concurrently creating the same
-    # PostgreSQL relation/type. Production schema changes should use Alembic.
-    from sqlalchemy import text as sql_text
-    with engine.begin() as connection:
-        if engine.dialect.name == "postgresql":
-            connection.execute(sql_text("SELECT pg_advisory_lock(68455321)"))
-            try:
+    # Local bootstrap can create tables. Production deployments should run
+    # Alembic migrations explicitly and set AUTO_CREATE_TABLES=false.
+    if settings.auto_create_tables:
+        from sqlalchemy import text as sql_text
+        with engine.begin() as connection:
+            if engine.dialect.name == "postgresql":
+                connection.execute(sql_text("SELECT pg_advisory_lock(68455321)"))
+                try:
+                    Base.metadata.create_all(bind=connection)
+                finally:
+                    connection.execute(sql_text("SELECT pg_advisory_unlock(68455321)"))
+            else:
                 Base.metadata.create_all(bind=connection)
-            finally:
-                connection.execute(sql_text("SELECT pg_advisory_unlock(68455321)"))
-        else:
-            Base.metadata.create_all(bind=connection)
 
     from app.staff.service import seed_system_roles_and_permissions
     with SessionLocal() as db:
@@ -160,7 +159,6 @@ app.include_router(pharmacy_router)
 app.include_router(branch_router)
 app.include_router(staff_router)
 app.include_router(medicine_router)
-app.include_router(suppliers_router)
 app.include_router(purchase_router)
 app.include_router(inventory_router)
 app.include_router(customer_router)

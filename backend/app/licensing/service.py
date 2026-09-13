@@ -26,9 +26,12 @@ def _public_key() -> Ed25519PublicKey:
     if not raw:
         raise HTTPException(503, "License verification key is not configured")
     try:
-        return serialization.load_pem_public_key(raw)
+        key = serialization.load_pem_public_key(raw)
     except Exception as exc:
         raise HTTPException(503, "Invalid license verification key") from exc
+    if not isinstance(key, Ed25519PublicKey):
+        raise HTTPException(503, "License verification key must be Ed25519")
+    return key
 
 
 def canonical_payload(payload: dict[str, Any]) -> bytes:
@@ -53,6 +56,8 @@ def _expires(value: Any) -> datetime:
 
 
 def validate_payload(payload: dict[str, Any], tenant_id: str) -> tuple[str, datetime, int, list[str]]:
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "License payload must be an object")
     license_id = str(payload.get("license_id") or "")
     if not license_id:
         raise HTTPException(400, "License license_id is missing")
@@ -63,8 +68,11 @@ def validate_payload(payload: dict[str, Any], tenant_id: str) -> tuple[str, date
     expires_at = _expires(payload.get("expires_at"))
     if expires_at <= _now():
         raise HTTPException(403, "License has expired")
-    max_devices = int(payload.get("max_devices", 1))
-    if max_devices < 1:
+    try:
+        max_devices = int(payload.get("max_devices", 1))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(400, "License max_devices is invalid") from exc
+    if max_devices < 1 or max_devices > 10000:
         raise HTTPException(400, "License max_devices is invalid")
     modules = payload.get("modules", payload.get("features", []))
     if not isinstance(modules, list):
@@ -99,9 +107,18 @@ def issuer_activate(payload: dict[str, Any], signature: str, device_id: str, dev
                 headers=_issuer_headers(),
             )
         if response.status_code >= 400:
-            detail = response.json().get("detail", "Issuer rejected activation")
+            try:
+                detail = response.json().get("detail", "Issuer rejected activation")
+            except Exception:
+                detail = "Issuer rejected activation"
             raise HTTPException(response.status_code, detail)
-        return response.json()
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise HTTPException(502, "License issuer returned invalid activation data") from exc
+        if not isinstance(data, dict):
+            raise HTTPException(502, "License issuer returned invalid activation data")
+        return data
     except HTTPException:
         raise
     except httpx.HTTPError as exc:
@@ -255,7 +272,12 @@ def status_for_device(db: Session, tenant_id: str, device_id: str | None = None)
 def to_status(row: LicenseActivation | None) -> dict[str, Any]:
     if not row:
         return {"license_id": None, "tenant_id": None, "plan": None, "status": "unlicensed", "expires_at": None, "max_devices": None, "modules": [], "device_id": None, "issuer_status": None, "offline_valid_until": None}
-    modules = json.loads(row.modules_json or "[]")
+    try:
+        modules = json.loads(row.modules_json or "[]")
+    except (TypeError, ValueError):
+        modules = []
+    if not isinstance(modules, list):
+        modules = []
     offline_hours = int(os.getenv("LICENSE_OFFLINE_GRACE_HOURS", "24"))
     offline_until = min(row.expires_at, (row.last_validated_at or row.created_at or _now()) + timedelta(hours=offline_hours))
     return {"license_id": row.license_id, "tenant_id": row.tenant_id, "plan": row.plan, "status": row.status if not row.revoked else "revoked", "expires_at": row.expires_at, "max_devices": row.max_devices, "modules": modules, "device_id": row.device_id, "issuer_status": row.issuer_status, "offline_valid_until": offline_until}
@@ -272,7 +294,10 @@ def ensure_login_license(db: Session, user, device_id: str, device_name: str | N
     if not provisioned: raise HTTPException(403, "MEDORAX ERP license is not provisioned for this account")
     if provisioned.expires_at <= _now():
         provisioned.status = "expired"; db.commit(); raise HTTPException(403, "MEDORAX ERP license has expired")
-    payload = json.loads(provisioned.license_json)
+    try:
+        payload = json.loads(provisioned.license_json)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(500, "Provisioned license data is corrupt") from exc
     license_id, _, _, _ = validate_payload(payload, tenant)
     if license_id != provisioned.license_id: raise HTTPException(403, "Provisioned license is inconsistent")
     existing = db.query(LicenseActivation).filter(LicenseActivation.license_id == license_id, LicenseActivation.tenant_id == tenant, LicenseActivation.device_id == device_id, LicenseActivation.revoked.is_(False)).first()

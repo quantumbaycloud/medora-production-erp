@@ -8,25 +8,12 @@ import {
   CreditCard,
   Banknote,
 } from "lucide-react";
+import { suggestedProducts } from "../../data/billing/billingData";
+import { createInvoice } from "../../services/billingService";
 
 const TAX_RATE = 0.08;
 
-const initialCartItems = [
-  {
-    id: 1,
-    name: "Amoxicillin 500mg",
-    sku: "AMX-500-120",
-    price: 12.5,
-    quantity: 2,
-  },
-  {
-    id: 2,
-    name: "Ibuprofen 400mg",
-    sku: "IBU-400-050",
-    price: 8.0,
-    quantity: 1,
-  },
-];
+const initialCartItems = [];
 
 const ManualBilling = () => {
   const [cartItems, setCartItems] = useState(initialCartItems);
@@ -81,8 +68,8 @@ const ManualBilling = () => {
     setSearchQuery("");
   };
 
-  const handleCompleteSale = () => {
-    alert("Sale completed successfully!");
+  const handleCompleteSale = async () => {
+    try { await createInvoice({ cartItems, paymentMethod: paymentMethod === "card" ? "Card" : "Cash" }); clearCart(); } catch (error) { alert(error?.response?.data?.detail || error.message || "Unable to create invoice"); }
   };
 
   return (

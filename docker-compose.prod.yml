@@ -26,6 +26,12 @@ services:
       LICENSE_ISSUER_URL: https://api.medorax.in/licensing
       LICENSE_ISSUER_TOKEN: ""
     depends_on: [postgres, redis]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     volumes:
       - ./local-secrets/licensing/public.pem:/run/secrets/medorax-license/public.pem:ro
     networks: [internal]
@@ -45,7 +51,11 @@ services:
     volumes:
       - ./ops/nginx:/etc/nginx/conf.d:ro
       - ./ops/tls:/etc/nginx/tls:ro
-    depends_on: [erp-web, erp-api]
+    depends_on:
+      erp-api:
+        condition: service_healthy
+      erp-web:
+        condition: service_started
     networks: [internal]
 
 volumes:

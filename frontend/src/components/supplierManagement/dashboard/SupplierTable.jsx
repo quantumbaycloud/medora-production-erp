@@ -1,49 +1,9 @@
 ﻿import { Search, Download, Users } from "lucide-react";
+import { supplierData } from "../../../data/reports/mockData";
 import SupplierRow from "./SupplierRow";
 
 const SupplierTable = () => {
-  const suppliers = [
-    {
-      id: "SUP-001",
-      name: "PharmaCorp Global",
-      contact: "Dr. Sarah Jenkins",
-      balance: "$450,230.00",
-      status: "Overdue",
-      avatarBg: "bg-gradient-to-br from-blue-500 to-cyan-400",
-      avatarText: "text-on-primary",
-      statusClass: "bg-error-container text-on-error-container ring-1 ring-error-container"
-    },
-    {
-      id: "SUP-002",
-      name: "MediEquip Supplies",
-      contact: "James Chen",
-      balance: "$12,450.50",
-      status: "Current",
-      avatarBg: "bg-gradient-to-br from-emerald-500 to-teal-400",
-      avatarText: "text-on-primary",
-      statusClass: "bg-secondary-container text-on-secondary-fixed-variant ring-1 ring-secondary-fixed-dim"
-    },
-    {
-      id: "SUP-003",
-      name: "BioGenetics Lab",
-      contact: "Amanda Torres",
-      balance: "$85,900.00",
-      status: "Processing",
-      avatarBg: "bg-gradient-to-br from-violet-500 to-purple-400",
-      avatarText: "text-on-primary",
-      statusClass: "bg-tertiary-fixed text-on-tertiary-fixed-variant ring-1 ring-tertiary-fixed-dim"
-    },
-    {
-      id: "SUP-004",
-      name: "Novanet Health",
-      contact: "Michael Ross",
-      balance: "$0.00",
-      status: "Current",
-      avatarBg: "bg-gradient-to-br from-amber-500 to-orange-400",
-      avatarText: "text-on-primary",
-      statusClass: "bg-secondary-container text-on-secondary-fixed-variant ring-1 ring-secondary-fixed-dim"
-    }
-  ];
+  const suppliers = supplierData.map((s) => ({ id: s.id, name: s.name, contact: s.contact_person || "—", balance: `₹${Number(s.outstanding_balance || 0).toLocaleString("en-IN")}`, status: Number(s.outstanding_balance || 0) > 0 ? "Outstanding" : "Current", statusClass: Number(s.outstanding_balance || 0) > 0 ? "bg-error-container text-on-error-container" : "bg-secondary-container text-on-secondary-fixed-variant" }));
 
   return (
     <div className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest shadow-sm">

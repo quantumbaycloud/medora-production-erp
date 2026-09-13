@@ -17,29 +17,11 @@ import {
   CheckCircle,
   ArrowRight,
 } from "lucide-react";
+import { suggestedProducts } from "../../data/billing/billingData";
 
 const TAX_RATE = 0.08;
 
-const initialPrescriptionItems = [
-  {
-    id: 1,
-    name: "Amoxicillin 500mg",
-    category: "Antibiotic",
-    batch: "BN-90221",
-    price: 12.5,
-    quantity: 2,
-    total: 25.0,
-  },
-  {
-    id: 2,
-    name: "Lisinopril 10mg",
-    category: "Blood Pressure",
-    batch: "BN-88120",
-    price: 18.2,
-    quantity: 1,
-    total: 18.2,
-  },
-];
+const initialPrescriptionItems = [];
 
 const PrescriptionBilling = () => {
   const [cartItems, setCartItems] = useState(initialPrescriptionItems);

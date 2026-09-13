@@ -74,6 +74,7 @@ class Settings(BaseSettings):
 
     # ── CORS ──────────────────────────────────────────────────────────────────
     cors_origins: str | list[str] = "*"
+    auto_create_tables: bool = True
 
     # ── Internal / Ops ────────────────────────────────────────────────────────
     internal_api_key: str = ""
@@ -127,6 +128,10 @@ class Settings(BaseSettings):
             )
 
         if self.app_env == "production":
+            if self.cors_origins == "*" or self.cors_origins == ["*"]:
+                raise ValueError("CORS_ORIGINS must explicitly list production frontend origins")
+            if self.storage_access_key == "minioadmin" or self.storage_secret_key == "minioadmin":
+                raise ValueError("Default object-storage credentials are not allowed in production")
             if not self.license_issuer_url:
                 raise ValueError("LICENSE_ISSUER_URL is required in production")
             if not self.erp_provision_token:

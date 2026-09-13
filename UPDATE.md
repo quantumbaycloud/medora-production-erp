@@ -24,3 +24,16 @@
 - Do not copy issuer private keys or issuer admin tokens into the ERP installation.
 
 The issuer admin token remains a control-plane secret on onboarding/admin only.
+
+
+## Production-hardening changes in this build
+- Onboarding provisioning remains the authoritative source of ERP username, temporary password and signed license.
+- Provisioning validates the signed license expiration against `licenseExpiresAt` before changing ERP state.
+- Every onboarding credential rotation updates `password_updated_at` and revokes existing ERP sessions.
+- ERP login resolves `erpUsername`, email or mobile number and requires the tenant's provisioned license.
+- The same persisted client device UUID is used by authentication and licensing.
+- Central license validation is fail-closed: unknown issuer/network states do not grant UI access; the configured offline grace period is the only outage allowance.
+- ERP installations never receive the central licensing issuer administration token or private signing key.
+- Frontend API requests automatically rotate access tokens once on a 401 and retry the original request.
+- Production health checks are included for the ERP API.
+- Production CORS remains environment-controlled; do not deploy with a wildcard origin.

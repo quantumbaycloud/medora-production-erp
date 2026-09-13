@@ -57,7 +57,7 @@ export default function LoginForm() {
             className="block text-[14px] leading-[20px] font-medium tracking-[0.01em] text-[#424751] mb-1.5"
             htmlFor="email"
           >
-            ERP Username, ERP Username, Email or Mobile Number
+            ERP Username, Email or Mobile Number
           </label>
           <input
             id="email"

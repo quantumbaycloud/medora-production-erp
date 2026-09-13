@@ -16,10 +16,11 @@ import {
 
 import { useCart } from "../../hooks/useCart";
 import { quickProducts } from "../../data/billing/billingData";
+import { createInvoice } from "../../services/billingService";
 
 const TAX_RATE = 0.085;
 
-const categories = ["All Items", "Medicine", "OTC", "First Aid", "Vitamins"];
+const categories = ["All Items"];
 
 const QuickBilling = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,25 +40,7 @@ const QuickBilling = () => {
     subtotal,
     tax,
     total,
-  } = useCart(
-    [
-      {
-        id: 1,
-        name: "Amoxicillin 500mg",
-        description: "Capsules • 30ct (Rx)",
-        price: 12.5,
-        quantity: 2,
-      },
-      {
-        id: 2,
-        name: "Ibuprofen 200mg",
-        description: "Tablets • 100ct",
-        price: 8.99,
-        quantity: 1,
-      },
-    ],
-    TAX_RATE
-  );
+  } = useCart([], TAX_RATE);
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -87,6 +70,7 @@ const QuickBilling = () => {
           name: product.name,
           description: product.category,
           price: product.price,
+          batch_number: product.batch_number,
           quantity: 1,
         },
       ];
@@ -105,12 +89,12 @@ const QuickBilling = () => {
     setShowReceipt(true);
   };
 
-  const handleConfirmCharge = () => {
-    alert(
-      `Charge of $${total.toFixed(2)} via ${paymentMethod.toUpperCase()} processed successfully!`
-    );
-    setShowReceipt(false);
-    clearCart();
+  const handleConfirmCharge = async () => {
+    try {
+      await createInvoice({ cartItems, paymentMethod: paymentMethod === "card" ? "Card" : "Cash" });
+      setShowReceipt(false);
+      clearCart();
+    } catch (error) { alert(error?.response?.data?.detail || error.message || "Unable to create invoice"); }
   };
 
   return (
@@ -225,8 +209,8 @@ const QuickBilling = () => {
               JD
             </div>
             <div>
-              <p className="m-0 text-sm font-medium leading-tight text-on-background">John Doe</p>
-              <p className="m-0 text-xs text-on-surface-variant">ID: PT-8842</p>
+              <p className="m-0 text-sm font-medium leading-tight text-on-background">Walk-in customer</p>
+              <p className="m-0 text-xs text-on-surface-variant">Select a customer for this bill</p>
             </div>
           </div>
           <ChevronRight size={18} className="text-slate-300 transition-colors group-hover:text-primary" />
