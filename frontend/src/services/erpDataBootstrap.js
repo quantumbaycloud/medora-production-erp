@@ -42,23 +42,45 @@ export async function loadERPData() {
   setActivePharmacyId(pharmacy.id);
 
   const q = withPharmacy();
-  const results = await Promise.allSettled([
-    api.get("/reports/dashboard", { params: q }),
-    api.get("/reports/sales", { params: q }),
-    api.get("/reports/expiry", { params: { ...q, days_ahead: 60 } }),
-    api.get("/medicines", { params: q }),
-    api.get("/suppliers", { params: q }),
-    api.get("/purchases", { params: q }),
-    api.get(`/pharmacies/${pharmacy.id}/branches`, { params: { limit: 500 } }),
-    api.get(`/pharmacies/${pharmacy.id}/staff`, { params: { limit: 500 } }),
-    api.get(`/pharmacies/${pharmacy.id}/attendance`, { params: { limit: 500 } }),
-    api.get("/settings", { params: q }),
-    api.get("/notifications", { params: { ...q, limit: 100 } }),
-    api.get("/audit-logs", { params: { ...q, limit: 100 } }),
-    api.get("/api/customers/", { params: { pharmacy_id: pharmacy.id } }),
-  ]);
+  const requests = [
+    ["dashboard", api.get("/reports/dashboard", { params: q })],
+    ["sales", api.get("/reports/sales", { params: q })],
+    ["expiry", api.get("/reports/expiry", { params: { ...q, days_ahead: 60 } })],
+    ["medicines", api.get("/medicines", { params: q })],
+    ["suppliers", api.get("/suppliers", { params: q })],
+    ["purchases", api.get("/purchases", { params: q })],
+    ["branches", api.get(`/pharmacies/${pharmacy.id}/branches`, { params: { limit: 500 } })],
+    ["staff", api.get(`/pharmacies/${pharmacy.id}/staff`, { params: { limit: 500 } })],
+    ["attendance", api.get(`/pharmacies/${pharmacy.id}/attendance`, { params: { limit: 500 } })],
+    ["settings", api.get("/settings", { params: q })],
+    ["notifications", api.get("/notifications", { params: { ...q, limit: 100 } })],
+    ["auditLogs", api.get("/audit-logs", { params: { ...q, limit: 100 } })],
+    ["customers", api.get("/api/customers/", { params: { pharmacy_id: pharmacy.id } })],
+  ];
 
-  const value = (i, fallback) => results[i].status === "fulfilled" ? results[i].value.data : fallback;
+  const results = await Promise.allSettled(requests.map(([, request]) => request));
+
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error(
+        `[ERP bootstrap] ${requests[index][0]} failed:`,
+        result.reason?.response?.status,
+        result.reason?.response?.data || result.reason?.message || result.reason
+      );
+    }
+  });
+
+  const value = (i, fallback) => {
+    const result = results[i];
+
+    if (!result) {
+      return fallback;
+    }
+
+    return result.status === "fulfilled"
+      ? result.value?.data ?? fallback
+      : fallback;
+  };
   const dashboard = value(0, {});
   const sales = value(1, []);
   const expiry = value(2, []);
@@ -72,7 +94,7 @@ export async function loadERPData() {
   const notifications = value(10, []);
   const auditLogs = value(11, []);
   const customers = value(12, { stats: {}, rows: [] });
-  const ledger = value(13, []);
+  const ledger = [];
 
   const batches = flattenBatches(medicines);
   const branchName = (id) => branches.find((b) => b.id === id)?.name || "—";
