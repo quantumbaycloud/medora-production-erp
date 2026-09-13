@@ -5,8 +5,8 @@ import * as purchaseData from "../data/purchases/data";
 import * as billingData from "../data/billing/billingData";
 import * as importExportData from "../data/importExport/data";
 import * as reportMockData from "../data/reports/mockData";
-import staffAttendance from "../data/staffManagement/attendanceData";
-import staffActivity from "../data/staffManagement/activityLogsData";
+import * as staffAttendance from "../data/staffManagement/attendanceData";
+import * as staffActivity from "../data/staffManagement/activityLogsData";
 import * as staffData from "../data/staffManagement/staffData";
 
 const money = (value) => `₹${Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
