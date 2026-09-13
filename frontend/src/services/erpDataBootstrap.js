@@ -56,6 +56,7 @@ export async function loadERPData() {
     ["notifications", api.get("/notifications", { params: { ...q, limit: 100 } })],
     ["auditLogs", api.get("/audit-logs", { params: { ...q, limit: 100 } })],
     ["customers", api.get("/api/customers/", { params: { pharmacy_id: pharmacy.id } })],
+    ["ledger", api.get("/inventory/ledger", { params: q })],
   ];
 
   const results = await Promise.allSettled(requests.map(([, request]) => request));
@@ -94,7 +95,7 @@ export async function loadERPData() {
   const notifications = value(10, []);
   const auditLogs = value(11, []);
   const customers = value(12, { stats: {}, rows: [] });
-  const ledger = [];
+  const ledger = value(13, []);
 
   const batches = flattenBatches(medicines);
   const branchName = (id) => branches.find((b) => b.id === id)?.name || "—";
@@ -156,7 +157,12 @@ export async function loadERPData() {
     initialReceivedItems: [], poOptions: purchases.map((p) => ({ id: p.id, label: p.invoice_number })), creditNotes: [], returnReasons: [], initialOrderItems: [],
     productOptions: medicines.map((m) => ({ id: m.id, name: m.name, sku: m.sku || "—", price: Number(m.batches?.[0]?.purchase_price || 0) })),
     unitOptions: [...new Set(medicines.map((m) => m.unit).filter(Boolean))], taxOptions: [...new Set(medicines.map((m) => String(m.gst_percentage ?? "0")))],
-    supplierOptions: suppliers.map((s) => ({ id: s.id, name: s.name })), locationOptions: branches.map((b) => ({ id: b.id, name: b.name })),
+    supplierOptions: suppliers.map((s) => ({ id: s.id, name: s.name })),
+    locationOptions: branches.map((b) => ({ id: b.id, name: b.name })),
+    productOptions: medicines.map((m) => ({ id: m.id, name: m.name, sku: m.sku || "", price: Number(m.batches?.[0]?.purchase_price || 0) })),
+    initialOrderItems: [],
+    initialReceivedItems: [],
+    poOptions: purchases.map((p) => ({ id: p.id, label: p.invoice_number, status: p.status })),
   });
 
   importExportData.setRuntimeData({ tabData: {}, importHistory: [], exportColumns: ["SKU", "Name", "Category", "Batch No.", "Expiry Date", "Quantity", "Unit Price", "Supplier ID", "Status"] });
@@ -167,7 +173,7 @@ export async function loadERPData() {
   staffActivity.setRuntimeData(auditLogs);
   staffData.setRuntimeData(staff);
 
-  return { pharmacy, branches, medicines, suppliers, purchases, staff, attendance, settings, notifications, auditLogs, dashboard, sales, expiry, customers };
+  return { pharmacy, branches, medicines, suppliers, purchases, staff, attendance, settings, notifications, auditLogs, dashboard, sales, expiry, customers, ledger };
 }
 
 export function clearERPData() {

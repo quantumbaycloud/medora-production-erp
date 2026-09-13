@@ -4,6 +4,7 @@ import AuthNavbar from "../../components/authentication/shared/AuthNavbar";
 import AuthFooter from "../../components/authentication/shared/AuthFooter";
 import logo from "../../assets/WhatsApp_Image_2026-06-22_at_5.25.21_PM-removebg-preview.png";
 import banner from "../../assets/verifyEmailimg.jpg";
+import api from "../../services/api";
 
 export default function VerifyEmail() {
   const navigate = useNavigate();
@@ -60,30 +61,34 @@ export default function VerifyEmail() {
 
     setIsVerifying(true);
     setError("");
-    
-    setTimeout(() => {
-      setIsVerifying(false);
+    try {
+      await api.post("/auth/verify-email", { token: otpValue });
       setIsVerified(true);
-      
-      setTimeout(() => {
-        navigate("/");
-      }, 2000);
-    }, 2000);
+      setTimeout(() => navigate("/login", { replace: true }), 1200);
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Verification failed.");
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     const btn = document.getElementById("resend-btn");
+    if (!btn || !email || email === "user@example.com") return;
     const originalText = btn.innerText;
-    btn.innerText = "Sending...";
+    btn.innerText = "Sending…";
     btn.classList.add("opacity-50", "pointer-events-none");
-    
-    setTimeout(() => {
+    try {
+      await api.post("/auth/resend-verification", { email });
       btn.innerText = "Sent!";
-      setTimeout(() => {
-        btn.innerText = originalText;
-        btn.classList.remove("opacity-50", "pointer-events-none");
-      }, 2000);
-    }, 1500);
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Unable to resend verification code.");
+      btn.innerText = originalText;
+    }
+    setTimeout(() => {
+      btn.innerText = originalText;
+      btn.classList.remove("opacity-50", "pointer-events-none");
+    }, 1800);
   };
 
   return (

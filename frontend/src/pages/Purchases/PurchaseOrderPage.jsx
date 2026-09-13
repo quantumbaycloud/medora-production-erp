@@ -5,6 +5,7 @@ import OrderDetailsSection from "../../components/purchases/OrderDetailsSection"
 import LineItemsTable from "../../components/purchases/LineItemsTable";
 import NotesAndSummary from "../../components/purchases/NotesAndSummary";
 import { initialOrderItems, productOptions, supplierOptions, locationOptions } from "../../data/purchases/data";
+import erpApi from "../../services/erpApi";
 
 export default function PurchaseOrderPage() {
   const [poNumber] = useState(() => `PO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`);
@@ -69,20 +70,54 @@ export default function PurchaseOrderPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSubmit = () => {
-    if (!supplier) {
-      showToast("Please select a supplier");
-      return;
-    }
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      showToast("Purchase Order submitted successfully!");
-    }, 1500);
+  const buildPurchasePayload = () => {
+    const validItems = items.filter((item) => item.product);
+    if (!supplier) throw new Error("Please select a supplier");
+    if (!validItems.length) throw new Error("Add at least one medicine to the order");
+    return {
+      supplier_id: supplier,
+      branch_id: location || null,
+      invoice_number: poNumber,
+      invoice_date: poDate,
+      paid_amount: 0,
+      notes: [refNumber && `Reference: ${refNumber}`, notes].filter(Boolean).join("\n") || null,
+      items: validItems.map((item) => ({
+        medicine_id: item.product,
+        batch_number: `PO-${poNumber}`,
+        expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10),
+        quantity: Number(item.qty),
+        free_quantity: 0,
+        purchase_price: Number(item.price || 0),
+        mrp: Number(item.price || 0),
+        selling_price: Number(item.price || 0),
+        tax_percentage: Number(item.tax || 0),
+        discount_percentage: 0,
+      })),
+    };
   };
 
-  const handleSaveDraft = () => {
-    showToast("Purchase Order saved as draft");
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      await erpApi.createPurchase(buildPurchasePayload());
+      showToast("Purchase invoice draft saved in the ERP database.");
+    } catch (error) {
+      showToast(error?.response?.data?.detail || error.message || "Unable to save purchase.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setIsSubmitting(true);
+    try {
+      await erpApi.createPurchase(buildPurchasePayload());
+      showToast("Purchase draft saved successfully.");
+    } catch (error) {
+      showToast(error?.response?.data?.detail || error.message || "Unable to save draft.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

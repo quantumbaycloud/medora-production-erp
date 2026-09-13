@@ -15,15 +15,23 @@ import {
 } from "lucide-react";
 import { Th, Td, StatusBadge } from "./Shared";
 import { tabData, importHistory } from "../../data/importExport/data";
+import erpApi from "../../services/erpApi";
 
 export default function ImportPage({ onToast }) {
   const [activeSubTab, setActiveSubTab] = useState("medicines");
   const [isUploaded, setIsUploaded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [importing, setImporting] = useState(false);
 
   const getData = () => tabData[activeSubTab];
 
-  const handleUpload = () => setIsUploaded(true);
+  const handleUpload = (event) => {
+    const file = event.target?.files?.[0];
+    if (!file) return;
+    setSelectedFile(file);
+    setIsUploaded(true);
+  };
   const handleResetUpload = () => setIsUploaded(false);
 
   const handleFixErrors = () => {
@@ -39,13 +47,19 @@ export default function ImportPage({ onToast }) {
     }
   };
 
-  const handleImportAnyway = () => {
-    onToast?.({
-      title: "Import Started",
-      message: "✓ Import started — 25 rows queued",
-      icon: CheckCircle,
-    });
-    setTimeout(() => setIsUploaded(false), 2000);
+  const handleImportAnyway = async () => {
+    if (activeSubTab !== "medicines" || !selectedFile) {
+      onToast?.({ title: "Import unavailable", message: "Only medicine CSV import is currently supported by the ERP API.", icon: AlertCircle });
+      return;
+    }
+    setImporting(true);
+    try {
+      const { data } = await erpApi.importMedicines(selectedFile);
+      onToast?.({ title: "Import complete", message: `${data.successful || 0} rows imported; ${data.failed || 0} failed.`, icon: CheckCircle });
+      setIsUploaded(false); setSelectedFile(null);
+    } catch (error) {
+      onToast?.({ title: "Import failed", message: error?.response?.data?.detail || error.message || "Import failed", icon: AlertCircle });
+    } finally { setImporting(false); }
   };
 
   const handleDownloadTemplate = () => {
@@ -145,8 +159,9 @@ export default function ImportPage({ onToast }) {
       {!isUploaded ? (
         <div
           className="border-2 border-dashed border-[#c2c6d3] rounded p-12 text-center bg-white transition-colors hover:border-[#004287] cursor-pointer flex flex-col items-center justify-center min-h-75"
-          onClick={handleUpload}
+          onClick={() => document.getElementById("erp-import-file")?.click()}
         >
+          <input id="erp-import-file" type="file" accept=".csv,text/csv" className="hidden" onChange={handleUpload} />
           <Upload size={48} className="text-[#004287] mb-4 opacity-60" />
           <h3 className="font-headline-md text-[#121c2a] mb-2">Drag &amp; Drop file to import</h3>
           <p className="text-[#424751] text-sm mb-6">Supported formats: .csv, .xlsx (Max 50MB)</p>
@@ -183,7 +198,7 @@ export default function ImportPage({ onToast }) {
                 Fix Errors
               </button>
               <button
-                onClick={handleImportAnyway}
+                onClick={handleImportAnyway} disabled={importing}
                 className="px-4 py-2 bg-[#004287] text-white font-medium rounded hover:bg-[#235eac] transition text-sm"
               >
                 Import Anyway

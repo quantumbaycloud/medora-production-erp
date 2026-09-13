@@ -1,9 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import erpApi from "../../services/erpApi";
 import { Search, Pill, Users, Receipt, Truck, UserCog, ShoppingCart } from "lucide-react";
-import { currentStockItems } from "../../data/inventoryManagement/inventoryData";
-import { recentOrders } from "../../data/pharmacySettings/pharmacySettingsData";
-import { customerData, supplierData } from "../../data/reports/mockData";
-import { staffMembers } from "../../data/staffManagement/staffData";
+
 
 const categories = ["All", "Medicines", "Customers", "Suppliers", "Bills", "Purchases", "Staff"];
 
@@ -11,19 +9,51 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const normalized = query.trim().toLowerCase();
+  const [remote, setRemote] = useState({ medicines: [], customers: [], suppliers: [], purchases: [], staff: [], bills: [] });
+  const [loading, setLoading] = useState(false);
 
-  const results = useMemo(() => {
-    if (!normalized) return { medicines: [], customers: [], suppliers: [], bills: [], purchases: [], staff: [] };
-    const match = (...values) => values.some((v) => String(v ?? "").toLowerCase().includes(normalized));
-    return {
-      medicines: currentStockItems.filter((x) => match(x.name, x.sku, x.category)),
-      customers: customerData.filter((x) => match(x.name, x.type, x.orders)),
-      suppliers: supplierData.filter((x) => match(x.name, x.contact_person, x.phone, x.gstin)),
-      bills: recentOrders.filter((x) => match(x.orderId, x.customer, x.amount, x.status)),
-      purchases: [],
-      staff: staffMembers.filter((x) => match(x.first_name, x.last_name, x.employee_code, x.contact_email, x.contact_phone)),
+  useEffect(() => {
+    let active = true;
+    if (!normalized) { setRemote({ medicines: [], customers: [], suppliers: [], purchases: [], staff: [], bills: [] }); return undefined; }
+    const run = async () => {
+      setLoading(true);
+      const [medicines, suppliers, customers, purchases, staff, sales] = await Promise.allSettled([
+        erpApi.medicines(query.trim()),
+        erpApi.suppliers({ q: query.trim() }),
+        erpApi.customers({ search: query.trim() }),
+        erpApi.purchases({}),
+        erpApi.staff(erpApi.pharmacyId(), { limit: 500 }),
+        erpApi.salesReport({}),
+      ]);
+      if (!active) return;
+      const unwrap = (result, fallback = []) => result.status === "fulfilled" ? (result.value?.data ?? fallback) : fallback;
+      const purchaseRows = unwrap(purchases, []);
+      const staffRows = unwrap(staff, []);
+      const customerPayload = unwrap(customers, { rows: [] });
+      const salesRows = unwrap(sales, []);
+      const match = (...values) => values.some((v) => String(v ?? "").toLowerCase().includes(normalized));
+      setRemote({
+        medicines: unwrap(medicines, []),
+        suppliers: unwrap(suppliers, []),
+        customers: customerPayload.rows || [],
+        purchases: purchaseRows.filter((x) => match(x.invoice_number, x.status, x.total_amount)),
+        staff: staffRows.filter((x) => match(x.first_name, x.last_name, x.employee_code, x.contact_email, x.contact_phone)),
+        bills: salesRows.filter((x) => match(x.invoice_number, x.customer_name, x.total_amount, x.status)),
+      });
+      setLoading(false);
     };
-  }, [normalized]);
+    run().catch(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [normalized, query]);
+
+  const results = useMemo(() => ({
+    medicines: remote.medicines,
+    customers: remote.customers,
+    suppliers: remote.suppliers,
+    bills: remote.bills,
+    purchases: remote.purchases,
+    staff: remote.staff,
+  }), [remote]);
 
   const sections = [
     ["Medicines", results.medicines, Pill, (x) => `${x.name} • ${x.sku || "No SKU"}`, (x) => `${x.category || "Uncategorized"} • Stock: ${x.quantity ?? 0}`],
@@ -55,7 +85,7 @@ export default function SearchPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          <p className="text-sm text-on-surface-variant">{count} matching record{count === 1 ? "" : "s"}</p>
+          <p className="text-sm text-on-surface-variant">{loading ? "Searching ERP…" : `${count} matching record${count === 1 ? "" : "s"}`}</p>
           {visible.map(([name, rows, Icon, title, subtitle]) => rows.length > 0 && (
             <section key={name} className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
               <div className="border-b border-outline-variant px-5 py-4"><h2 className="font-bold text-on-background">{name} ({rows.length})</h2></div>

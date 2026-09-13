@@ -1,12 +1,13 @@
 // src/components/authentication/login/LoginForm/LoginForm.jsx
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { loginUser } from "../../../../store/authThunk";
 import logo from "../../../../assets/WhatsApp_Image_2026-06-22_at_5.25.21_PM-removebg-preview.png";
 
 export default function LoginForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,7 +24,8 @@ export default function LoginForm() {
     try {
       const result = await dispatch(loginUser({ identifier: email.trim(), password })).unwrap();
       if (result?.user) localStorage.setItem("user", JSON.stringify(result.user));
-      navigate("/", { replace: true });
+      const destination = location.state?.from?.pathname || "/";
+      navigate(destination, { replace: true });
     } catch (err) {
       const message = err?.detail || err?.message || "Unable to sign in. Check your credentials and license.";
       setError(message);

@@ -11,13 +11,18 @@ export default function AppTopbar({ onMenuClick }) {
     try { return JSON.parse(localStorage.getItem("user") || "null"); } catch { return null; }
   });
   const [license, setLicense] = useState(null);
+  const [notificationCount, setNotificationCount] = useState(0);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
-    Promise.all([api.get("/auth/me"), api.get("/api/licensing/status")]).then(([me, lic]) => {
+    Promise.all([
+      api.get("/auth/me"),
+      api.get("/api/licensing/status"),
+      api.get("/notifications", { params: { limit: 100 } }),
+    ]).then(([me, lic, notifications]) => {
       if (!active) return;
       const nextUser = me.data?.user || me.data;
       if (nextUser) {
@@ -25,6 +30,8 @@ export default function AppTopbar({ onMenuClick }) {
         localStorage.setItem("user", JSON.stringify(nextUser));
       }
       if (lic.data) setLicense(lic.data);
+      const rows = Array.isArray(notifications.data) ? notifications.data : [];
+      setNotificationCount(rows.filter((item) => !item.is_read && !item.read).length);
     }).catch(() => {});
     return () => { active = false; };
   }, []);
@@ -53,7 +60,7 @@ export default function AppTopbar({ onMenuClick }) {
       <div className="flex items-center gap-3">
         <Link to="/" aria-label="Notifications" className="relative rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container">
           <Bell size={20} />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-error" />
+          {notificationCount > 0 && <span className="absolute right-1 top-1 min-w-4 rounded-full bg-error px-1 text-center text-[9px] font-bold leading-4 text-white">{notificationCount > 99 ? "99+" : notificationCount}</span>}
         </Link>
         <div className="h-8 w-px bg-outline-variant" />
         <div className="relative" ref={ref}>

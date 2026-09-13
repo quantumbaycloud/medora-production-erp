@@ -1,4 +1,5 @@
 import { useState } from "react";
+import api from "../../services/api";
 import { Link, useNavigate } from "react-router-dom";
 import AuthNavbar from "../../components/authentication/shared/AuthNavbar";
 import AuthFooter from "../../components/authentication/shared/AuthFooter";
@@ -8,15 +9,21 @@ export default function ForgotPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log({ email });
-    setIsSubmitted(true);
-    
-    setTimeout(() => {
-      navigate("/verify-email", { state: { email } });
-    }, 1000);
+    setLoading(true);
+    setError("");
+    try {
+      await api.post("/auth/forgot-password", { identifier: email.trim() });
+      setIsSubmitted(true);
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Unable to start password recovery.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -73,12 +80,13 @@ export default function ForgotPassword() {
                 </div>
               </div>
 
+              {error && <p className="text-sm text-[#ba1a1a] text-center">{error}</p>}
               <button
                 type="submit"
                 className="w-full h-12 bg-[#004287] hover:bg-[#1e5aa8] transition-all text-[#ffffff] text-[14px] leading-[20px] font-semibold tracking-[0.01em] rounded-lg flex items-center justify-center gap-2 active:scale-95 duration-100"
               >
                 <span className="material-symbols-outlined text-[20px]">send</span>
-                Send Reset Link
+                {loading ? "Sending…" : "Send Reset Link"}
               </button>
             </form>
           ) : (

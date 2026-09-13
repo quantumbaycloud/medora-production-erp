@@ -13,9 +13,12 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { exportColumns } from "../../data/importExport/data";
+import erpApi from "../../services/erpApi";
 
 export default function ExportPage({ onToast }) {
   const [isExporting, setIsExporting] = useState(false);
+  const [entity, setEntity] = useState("medicines");
+  const [format, setFormat] = useState("csv");
   const [selectedColumns, setSelectedColumns] = useState(
     exportColumns.map((c) => ({ name: c, checked: true }))
   );
@@ -31,16 +34,14 @@ export default function ExportPage({ onToast }) {
     setSelectedColumns((prev) => prev.map((col) => ({ ...col, checked: !allChecked })));
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setIsExporting(true);
-    setTimeout(() => {
-      setIsExporting(false);
-      onToast?.({
-        title: "Export Complete",
-        message: "medicines_inventory.csv has been downloaded.",
-        icon: CheckCircle,
-      });
-    }, 1500);
+    try {
+      await erpApi.exportEntity(entity, format === "xlsx" ? "excel" : format);
+      onToast?.({ title: "Export Complete", message: `${entity} export downloaded successfully.`, icon: CheckCircle });
+    } catch (error) {
+      onToast?.({ title: "Export Failed", message: error?.response?.data?.detail || error.message || "Export failed", icon: CheckCircle });
+    } finally { setIsExporting(false); }
   };
 
   return (
@@ -66,7 +67,8 @@ export default function ExportPage({ onToast }) {
                     <input
                       type="radio"
                       name="export-type"
-                      defaultChecked={type.key === "medicines"}
+                      checked={entity === type.key}
+                      onChange={() => setEntity(type.key)}
                       className="peer sr-only"
                     />
                     <div className="p-4 rounded border-2 border-[#c2c6d3] peer-checked:border-[#004287] peer-checked:bg-[#d6e3ff] transition flex flex-col items-center text-center gap-2 hover:bg-[#f8f9ff]">
@@ -91,19 +93,20 @@ export default function ExportPage({ onToast }) {
                   { key: "csv", label: "CSV (.csv)", icon: FileSpreadsheet },
                   { key: "xlsx", label: "Excel (.xlsx)", icon: FileSpreadsheet },
                   { key: "pdf", label: "PDF (.pdf)", icon: FileText },
-                ].map((format) => {
-                  const Icon = format.icon;
+                ].map((formatOption) => {
+                  const Icon = formatOption.icon;
                   return (
-                    <label key={format.key} className="flex items-center gap-2 cursor-pointer">
+                    <label key={formatOption.key} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
                         name="format"
-                        defaultChecked={format.key === "csv"}
+                        checked={format === formatOption.key}
+                        onChange={() => setFormat(formatOption.key)}
                         className="text-[#004287] focus:ring-[#004287] h-4 w-4"
                       />
                       <span className="text-sm text-[#121c2a] flex items-center gap-1">
                         <Icon size={14} />
-                        {format.label}
+                        {formatOption.label}
                       </span>
                     </label>
                   );

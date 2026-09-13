@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowUp, AlertTriangle, Plus, X } from "lucide-react";
 
 import StatCard from "../../components/inventoryManagement/common/StatCard";
@@ -12,6 +12,7 @@ import {
   warehouses,
   currentStockItems,
 } from "../../data/inventoryManagement/inventoryData";
+import erpApi from "../../services/erpApi";
 
 const statusVariantMap = {
   Approved: "success",
@@ -81,6 +82,15 @@ const columns = [
 
 const StockAdjustment = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [medicineId, setMedicineId] = useState(currentStockItems[0]?.id || "");
+  const [batchNumber, setBatchNumber] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [type, setType] = useState("decrease");
+  const [reason, setReason] = useState("Damaged");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const selectedMedicine = useMemo(() => currentStockItems.find((item) => item.id === medicineId), [medicineId]);
 
   return (
     <>
@@ -155,9 +165,14 @@ const StockAdjustment = () => {
                 <label className="text-sm font-medium text-on-surface-variant">
                   Item Name / SKU
                 </label>
-                <select className="h-11 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface-variant outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-fixed">
+                <select value={medicineId} onChange={(e) => setMedicineId(e.target.value)} className="h-11 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface-variant outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-fixed">
                   {currentStockItems.map((item) => <option key={item.id} value={item.id}>{item.name} - {item.sku}</option>)}
                 </select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-on-surface-variant">Batch Number</label>
+                <input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} placeholder="Enter exact batch number" className="h-11 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 text-sm" required />
               </div>
 
               <div className="flex flex-col gap-1">
@@ -167,7 +182,7 @@ const StockAdjustment = () => {
                 <input
                   type="text"
                   readOnly
-                  value="12,400"
+                  value={selectedMedicine?.quantity?.toLocaleString?.() || "0"}
                   className="h-11 cursor-not-allowed rounded-xl border border-outline-variant bg-surface-container-low px-3 text-sm text-on-surface-variant outline-none"
                 />
               </div>
@@ -181,7 +196,8 @@ const StockAdjustment = () => {
                     <input
                       type="radio"
                       name="adj_type"
-                      defaultChecked
+                      checked={type === "decrease"}
+                      onChange={() => setType("decrease")}
                       className="text-primary focus:ring-primary"
                     />
                     Decrease
@@ -190,6 +206,8 @@ const StockAdjustment = () => {
                     <input
                       type="radio"
                       name="adj_type"
+                      checked={type === "increase"}
+                      onChange={() => setType("increase")}
                       className="text-primary focus:ring-primary"
                     />
                     Increase
@@ -205,6 +223,8 @@ const StockAdjustment = () => {
                   type="number"
                   min="1"
                   placeholder="e.g. 50"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
                   className="h-11 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface-variant outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-fixed"
                 />
               </div>
@@ -213,7 +233,7 @@ const StockAdjustment = () => {
                 <label className="text-sm font-medium text-on-surface-variant">
                   Reason
                 </label>
-                <select className="h-11 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface-variant outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-fixed">
+                <select value={reason} onChange={(e) => setReason(e.target.value)} className="h-11 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface-variant outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-fixed">
                   <option>Damaged</option>
                   <option>Miscount</option>
                   <option>Return</option>
@@ -229,11 +249,14 @@ const StockAdjustment = () => {
                 <textarea
                   rows="3"
                   placeholder="Add any relevant details..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                   className="resize-none rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm text-on-surface-variant outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-fixed"
                 />
               </div>
             </div>
 
+            {message && <p className="px-6 pb-2 text-sm text-error">{message}</p>}
             <div className="flex justify-end gap-3 border-t border-outline-variant bg-surface-container-lowest px-6 py-4">
               <button
                 type="button"

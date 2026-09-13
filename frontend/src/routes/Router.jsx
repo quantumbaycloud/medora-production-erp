@@ -78,20 +78,13 @@ const router = createBrowserRouter([
     element: <ChangePassword />,
   },
   {
-    path: "/sessions",
-    element: <SessionManagement />,
-  },
-  {
-    path: "/login-history",
-    element: <LoginHistory />,
-  },
-  {
-    path: "/license",
-    element: <LicenseManagement />,
-  },
-  {
-    path: "/profile",
-    element: <ProfilePage />,
+    element: <ProtectedRoute requireLicense={false} />,
+    children: [
+      { path: "/sessions", element: <SessionManagement /> },
+      { path: "/login-history", element: <LoginHistory /> },
+      { path: "/license", element: <LicenseManagement /> },
+      { path: "/profile", element: <ProfilePage /> },
+    ],
   },
   {
     element: <ProtectedRoute />,
