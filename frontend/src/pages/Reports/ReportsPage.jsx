@@ -9,7 +9,6 @@ import { GSTStats, GSTTable } from "../../components/reports/GSTTab";
 import { ProfitStats, ProfitTable } from "../../components/reports/ProfitTab";
 import { CustomerStats, CustomerTable } from "../../components/reports/CustomerTab";
 import { SupplierStats, SupplierTable } from "../../components/reports/SupplierTab";
-import { supplierData } from "../../data/reports/mockData";
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState("sales");

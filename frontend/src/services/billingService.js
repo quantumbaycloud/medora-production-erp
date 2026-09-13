@@ -2,7 +2,7 @@ import api, { withPharmacy } from "./api";
 
 export async function createInvoice({ cartItems, paymentMethod = "Cash", customerId = null, customerName = null, branchId = null }) {
   const items = cartItems.map((item) => ({
-    medicine_id: item.id,
+    medicine_id: item.medicine_id || item.id,
     batch_number: item.batch_number || item.batch || "",
     quantity: Number(item.quantity),
     discount_type: "flat",

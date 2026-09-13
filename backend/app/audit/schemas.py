@@ -1,6 +1,7 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, Dict, Any, List
+﻿from pydantic import BaseModel, ConfigDict
+from typing import Optional, Dict, Any
 from datetime import datetime
+
 
 class AuditLogResponse(BaseModel):
     id: str

@@ -1,7 +1,8 @@
-import os
+﻿import os
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any
+
 from sqlalchemy.orm import Session
 from fastapi import UploadFile, HTTPException
 
@@ -10,6 +11,7 @@ from app.core.storage import storage_service
 from app.core.config import settings
 from app.audit.models import AuditLog, DocumentMetadata
 from app.audit.schemas import DocumentResponse
+
 
 class AuditService:
 
@@ -26,6 +28,7 @@ class AuditService:
         ip_address: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ) -> AuditLog:
+
         entry = AuditLog(
             pharmacy_id=pharmacy_id,
             user_id=user_id,
@@ -37,8 +40,10 @@ class AuditService:
             ip_address=ip_address,
             details=details or {},
         )
+
         db.add(entry)
         db.flush()
+
         return entry
 
     @staticmethod
@@ -52,17 +57,38 @@ class AuditService:
         limit: int = 100,
         offset: int = 0,
     ) -> list[AuditLog]:
-        q = db.query(AuditLog).filter(AuditLog.pharmacy_id == pharmacy_id)
-        if action_type:
-            q = q.filter(AuditLog.action_type == action_type)
-        if category:
-            q = q.filter(AuditLog.category == category)
-        if user_id:
-            q = q.filter(AuditLog.user_id == user_id)
-        if entity_type:
-            q = q.filter(AuditLog.entity_type == entity_type)
 
-        return q.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
+        q = db.query(AuditLog).filter(
+            AuditLog.pharmacy_id == pharmacy_id
+        )
+
+        if action_type:
+            q = q.filter(
+                AuditLog.action_type == action_type
+            )
+
+        if category:
+            q = q.filter(
+                AuditLog.category == category
+            )
+
+        if user_id:
+            q = q.filter(
+                AuditLog.user_id == user_id
+            )
+
+        if entity_type:
+            q = q.filter(
+                AuditLog.entity_type == entity_type
+            )
+
+        return (
+            q
+            .order_by(AuditLog.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
 
     @staticmethod
     def upload_document(
@@ -77,22 +103,27 @@ class AuditService:
         expiry_date: Optional[datetime] = None,
         ip_address: Optional[str] = None,
     ) -> DocumentResponse:
-        # Read file contents and compute size
+
         content = file.file.read()
         file_size = len(content)
         file.file.seek(0)
 
-        # Generate unique storage key
-        ext = os.path.splitext(file.filename or "")[1]
-        unique_key = f"{pharmacy_id}/documents/{uuid.uuid4()}{ext}"
+        ext = os.path.splitext(
+            file.filename or ""
+        )[1]
+
+        unique_key = (
+            f"{pharmacy_id}/documents/{uuid.uuid4()}{ext}"
+        )
+
         bucket = settings.storage_bucket_documents
 
-        # Upload via boto3 storage
-        uploaded = storage_service.upload_file(
+        storage_service.upload_file(
             file_obj=file.file,
             bucket_name=bucket,
             object_name=unique_key,
-            content_type=file.content_type or "application/octet-stream"
+            content_type=file.content_type
+            or "application/octet-stream",
         )
 
         doc = DocumentMetadata(
@@ -101,16 +132,17 @@ class AuditService:
             title=title,
             file_name=file.filename or "uploaded_file",
             file_key=unique_key,
-            mime_type=file.content_type or "application/octet-stream",
+            mime_type=file.content_type
+            or "application/octet-stream",
             file_size_bytes=file_size,
             entity_id=entity_id,
             expiry_date=expiry_date,
             uploaded_by_user_id=user_id,
         )
+
         db.add(doc)
         db.flush()
 
-        # Record audit log
         AuditService.log(
             db=db,
             pharmacy_id=pharmacy_id,
@@ -126,10 +158,13 @@ class AuditService:
                 "category": category,
                 "file_name": doc.file_name,
                 "file_size_bytes": file_size,
-            }
+            },
         )
 
-        url = storage_service.get_presigned_url(bucket, unique_key)
+        url = storage_service.get_presigned_url(
+            bucket,
+            unique_key,
+        )
 
         return DocumentResponse(
             id=doc.id,
@@ -153,18 +188,37 @@ class AuditService:
         category: Optional[str] = None,
         entity_id: Optional[str] = None,
     ) -> list[DocumentResponse]:
-        q = db.query(DocumentMetadata).filter(DocumentMetadata.pharmacy_id == pharmacy_id)
-        if category:
-            q = q.filter(DocumentMetadata.category == category)
-        if entity_id:
-            q = q.filter(DocumentMetadata.entity_id == entity_id)
 
-        docs = q.order_by(DocumentMetadata.created_at.desc()).all()
+        q = db.query(DocumentMetadata).filter(
+            DocumentMetadata.pharmacy_id == pharmacy_id
+        )
+
+        if category:
+            q = q.filter(
+                DocumentMetadata.category == category
+            )
+
+        if entity_id:
+            q = q.filter(
+                DocumentMetadata.entity_id == entity_id
+            )
+
+        docs = (
+            q
+            .order_by(DocumentMetadata.created_at.desc())
+            .all()
+        )
+
         bucket = settings.storage_bucket_documents
 
         results = []
+
         for doc in docs:
-            url = storage_service.get_presigned_url(bucket, doc.file_key)
+            url = storage_service.get_presigned_url(
+                bucket,
+                doc.file_key,
+            )
+
             results.append(
                 DocumentResponse(
                     id=doc.id,
@@ -181,19 +235,39 @@ class AuditService:
                     download_url=url,
                 )
             )
+
         return results
 
     @staticmethod
-    def get_document_url(db: Session, pharmacy_id: str, document_id: str) -> str:
-        doc = db.query(DocumentMetadata).filter(
-            DocumentMetadata.id == document_id,
-            DocumentMetadata.pharmacy_id == pharmacy_id
-        ).first()
+    def get_document_url(
+        db: Session,
+        pharmacy_id: str,
+        document_id: str,
+    ) -> str:
+
+        doc = (
+            db.query(DocumentMetadata)
+            .filter(
+                DocumentMetadata.id == document_id,
+                DocumentMetadata.pharmacy_id == pharmacy_id,
+            )
+            .first()
+        )
+
         if not doc:
             raise NotFoundException("Document")
 
         bucket = settings.storage_bucket_documents
-        url = storage_service.get_presigned_url(bucket, doc.file_key)
+
+        url = storage_service.get_presigned_url(
+            bucket,
+            doc.file_key,
+        )
+
         if not url:
-            raise HTTPException(status_code=500, detail="Failed to generate document download URL")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate document download URL",
+            )
+
         return url

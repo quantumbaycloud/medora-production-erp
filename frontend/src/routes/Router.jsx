@@ -14,7 +14,7 @@ import PharmacyDirectory from "../pages/PharmacySettings/Directory";
 
 import Login from "../pages/Authentication/Login";
 import ForgotPassword from "../pages/Authentication/ForgotPassword";
-import VerifyEmail from "../pages/Authentication/VerifyEmail";
+
 import ChangePassword from "../pages/Authentication/ChangePassword";
 
 import SearchPage from "../pages/Search/SearchPage";
@@ -68,10 +68,6 @@ const router = createBrowserRouter([
   {
     path: "/forgot-password",
     element: <ForgotPassword />,
-  },
-  {
-    path: "/verify-email",
-    element: <VerifyEmail />,
   },
   {
     path: "/change-password",

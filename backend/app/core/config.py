@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
 
     # ── Database ──────────────────────────────────────────────────────────────
-    database_url: str = "sqlite:///./medorax.db"
+    database_url: str = ""
 
     # ── JWT ───────────────────────────────────────────────────────────────────
     jwt_secret: str = "change-this-in-local-development-must-be-32-chars"
@@ -51,7 +51,7 @@ class Settings(BaseSettings):
 
     # Base URL for email link generation (e.g., verify-email links)
     # Must be set to the production domain. Example: https://app.medorax.com
-    app_base_url: str = "http://localhost:8000"
+    app_base_url: str = ""
 
     # ── Cleanup Retention ────────────────────────────────────────────────────
     # All values are thresholds: records OLDER than these values are eligible
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
     internal_api_key: str = ""
 
     # ── Commercial MEDORAX ERP licensing ─────────────────────────────────────
-    license_issuer_url: str = "https://api.medorax.in/licensing"
+    license_issuer_url: str = ""
     # ERP runtime clients do not receive the issuer administration token.
     # License issuance/revocation remains restricted to the onboarding control plane.
     license_issuer_token: str = ""
@@ -94,9 +94,9 @@ class Settings(BaseSettings):
     celery_result_backend: str = "redis://localhost:6379/1"
 
     # ── Object Storage (S3 / MinIO) ───────────────────────────────────────────
-    storage_endpoint: str = "http://localhost:9000"
-    storage_access_key: str = "minioadmin"
-    storage_secret_key: str = "minioadmin"
+    storage_endpoint: str = ""
+    storage_access_key: str = ""
+    storage_secret_key: str = ""
     storage_secure: bool = False
     storage_bucket_prescriptions: str = "prescriptions"
     storage_bucket_documents: str = "documents"
@@ -130,10 +130,14 @@ class Settings(BaseSettings):
         if self.app_env == "production":
             if self.cors_origins == "*" or self.cors_origins == ["*"]:
                 raise ValueError("CORS_ORIGINS must explicitly list production frontend origins")
-            if self.storage_access_key == "minioadmin" or self.storage_secret_key == "minioadmin":
-                raise ValueError("Default object-storage credentials are not allowed in production")
+            if not self.database_url:
+                raise ValueError("DATABASE_URL is required in production")
+            if not self.storage_endpoint or not self.storage_access_key or not self.storage_secret_key:
+                raise ValueError("STORAGE_ENDPOINT, STORAGE_ACCESS_KEY and STORAGE_SECRET_KEY are required in production")
             if not self.license_issuer_url:
                 raise ValueError("LICENSE_ISSUER_URL is required in production")
+            if not self.app_base_url or not self.app_base_url.startswith("https://"):
+                raise ValueError("APP_BASE_URL must be an HTTPS URL in production")
             if not self.erp_provision_token:
                 raise ValueError("ERP_PROVISION_TOKEN is required in production")
             if self.email_provider == "console":
